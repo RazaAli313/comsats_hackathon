@@ -15,6 +15,8 @@ class Settings:
     COOKIE_SAMESITE: str = os.getenv("COOKIE_SAMESITE", "lax")
     COOKIE_DOMAIN: str | None = os.getenv("COOKIE_DOMAIN") or None
     ENV: str = os.getenv("ENV", "development")
+    STRIPE_SECRET_KEY: str | None = os.getenv("STRIPE_SECRET_KEY")
+    STRIPE_WEBHOOK_SECRET: str | None = os.getenv("STRIPE_WEBHOOK_SECRET")
 
 
 settings = Settings()

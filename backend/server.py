@@ -10,6 +10,8 @@ FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
 from backend.core.logging import configure_logging, logger
 from backend.middleware.exception_handlers import http_exception_handler, validation_exception_handler, generic_exception_handler
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from fastapi.exceptions import RequestValidationError
 
 configure_logging()
 
@@ -33,6 +35,8 @@ from backend.routes.api.cart import router as cart_router
 app.include_router(cart_router, prefix="/api")
 from backend.routes.api.orders import router as orders_router
 app.include_router(orders_router, prefix="/api")
+from backend.routes.api.payments import router as payments_router
+app.include_router(payments_router, prefix="/api")
 
 
 @app.get("/")
