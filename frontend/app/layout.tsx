@@ -32,15 +32,11 @@ export default function RootLayout({
                 ImagineX.ai
               </a>
               <nav className="flex items-center gap-4 text-sm">
-                <a href="/" className="hover:underline">
-                  Home
-                </a>
-                <a href="/about" className="hover:underline">
-                  About
-                </a>
-                <a href="/contact" className="rounded-md bg-foreground/95 text-background px-4 py-2 text-sm hover:opacity-95">
-                  Contact
-                </a>
+                <a href="/" className="hover:underline">Home</a>
+                <a href="/products" className="hover:underline">Products</a>
+                <a href="/about" className="hover:underline">About</a>
+                <a href="/contact" className="rounded-md bg-foreground/95 text-background px-4 py-2 text-sm hover:opacity-95">Contact</a>
+                <a href="/login" className="ml-2 text-sm hover:underline">Sign in</a>
               </nav>
             </div>
           </header>
