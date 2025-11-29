@@ -14,15 +14,36 @@ def get_cart(user=Depends(get_current_user)):
     doc = db.carts.find_one({"user_id": ObjectId(user.get("id"))})
     if not doc:
         return {"items": []}
-    # convert ids
+    # convert ids and enrich items with product info (name, image, stock)
+    out_items = []
     for it in doc.get("items", []):
-        it["product_id"] = str(it.get("product_id"))
-    return {"items": doc.get("items", []), "updated_at": doc.get("updated_at")}
+        pid = it.get("product_id")
+        pid_str = str(pid) if pid is not None else None
+        item_obj = {
+            "product_id": pid_str,
+            "quantity": it.get("quantity", 0),
+            "price": it.get("price", 0),
+        }
+        try:
+            prod = db.products.find_one({"_id": ObjectId(pid)}) if pid else None
+            if prod:
+                item_obj["name"] = prod.get("name")
+                # include a primary image if available
+                images = prod.get("images") or []
+                item_obj["image"] = (images[0] if images else prod.get("image") or prod.get("image_url"))
+                item_obj["stock"] = prod.get("stock", 0)
+        except Exception:
+            pass
+        out_items.append(item_obj)
+    return {"items": out_items, "updated_at": doc.get("updated_at")}
 
 
 @router.post("/cart/add")
 def add_to_cart(item: CartItem, user=Depends(get_current_user)):
     db = get_db()
+    # Only regular users can add to cart (admins are not allowed)
+    if user.get("role") != "user":
+        raise HTTPException(status_code=403, detail="Only regular users can add items to cart")
     # ensure product exists and has enough stock
     prod = db.products.find_one({"_id": ObjectId(item.product_id)})
     if not prod:
@@ -56,6 +77,8 @@ def add_to_cart(item: CartItem, user=Depends(get_current_user)):
 @router.put("/cart/update")
 def update_cart(item: CartItem, user=Depends(get_current_user)):
     db = get_db()
+    if user.get("role") != "user":
+        raise HTTPException(status_code=403, detail="Only regular users can update cart")
     cart = db.carts.find_one({"user_id": ObjectId(user.get("id"))})
     if not cart:
         raise HTTPException(status_code=404, detail="Cart not found")
@@ -82,6 +105,8 @@ def update_cart(item: CartItem, user=Depends(get_current_user)):
 @router.delete("/cart/remove")
 def remove_from_cart(product_id: str, user=Depends(get_current_user)):
     db = get_db()
+    if user.get("role") != "user":
+        raise HTTPException(status_code=403, detail="Only regular users can remove items from cart")
     cart = db.carts.find_one({"user_id": ObjectId(user.get("id"))})
     if not cart:
         raise HTTPException(status_code=404, detail="Cart not found")

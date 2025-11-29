@@ -6,8 +6,8 @@ export default function CartItem({ item, onUpdate, onRemove }: { item: any; onUp
   return (
     <motion.div layout className="card flex items-center justify-between">
       <div>
-        <div className="font-semibold">{item.name || item.product_id}</div>
-        <div className="muted text-sm">Qty: {item.quantity}</div>
+        <div className="font-semibold text-black">{item.name || item.product_id}</div>
+        <div className="text-sm">Qty: {item.quantity}</div>
       </div>
       <div className="flex items-center gap-2">
         <div className="font-medium">₹{item.price}</div>

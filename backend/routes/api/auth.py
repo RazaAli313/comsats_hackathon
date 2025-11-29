@@ -3,10 +3,11 @@ from ...models.user import UserCreate, UserLogin, UserOut
 from ...core.security import get_current_user
 from ...core.jwt import create_access_token, create_refresh_token, decode_token
 from ...core.config import settings
-from datetime import datetime
+from datetime import datetime, timedelta
 from ...database.connection import get_db
 from bson import ObjectId
 import bcrypt
+from typing import Optional
 
 router = APIRouter()
 
@@ -32,14 +33,36 @@ def register(payload: UserCreate):
 
 
 @router.post("/auth/login")
-def login(payload: UserLogin, response: Response):
+def login(payload: UserLogin, response: Response, request: Request):
     db = get_db()
+    # track failed login attempts per IP (last 1 hour)
+    ip = None
+    try:
+        ip = request.client.host
+    except Exception:
+        ip = "unknown"
+
+    # purge window start
+    window = datetime.utcnow() - timedelta(hours=1)
+    failed_count = db.login_failures.count_documents({"ip": ip, "created_at": {"$gt": window}})
+    if failed_count >= 3:
+        raise HTTPException(status_code=429, detail="Too many failed login attempts. Try again later.")
     user = db.users.find_one({"email": payload.email})
     if not user:
+        # record failed attempt
+        try:
+            db.login_failures.insert_one({"ip": ip, "email": payload.email, "created_at": datetime.utcnow()})
+        except Exception:
+            pass
         raise HTTPException(status_code=400, detail="Invalid credentials")
 
     pw_hash = user.get("password_hash", "")
     if not bcrypt.checkpw(payload.password.encode(), pw_hash.encode()):
+        # record failed attempt
+        try:
+            db.login_failures.insert_one({"ip": ip, "email": payload.email, "created_at": datetime.utcnow()})
+        except Exception:
+            pass
         raise HTTPException(status_code=400, detail="Invalid credentials")
 
     user_id = str(user.get("_id"))
@@ -65,7 +88,11 @@ def login(payload: UserLogin, response: Response):
     if settings.COOKIE_SECURE:
         cookie_kwargs["secure"] = True
 
-    response.set_cookie("access_token", access_token, path='/', **cookie_kwargs)
+    # persist access_token longer for admin users (24 hours)
+    if user.get("role") == "admin":
+        response.set_cookie("access_token", access_token, path='/', max_age=24*60*60, **cookie_kwargs)
+    else:
+        response.set_cookie("access_token", access_token, path='/', **cookie_kwargs)
     # set refresh token cookie with an expiration matching the token
     max_age = settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60
     response.set_cookie("refresh_token", refresh_token, path='/', max_age=max_age, **cookie_kwargs)
@@ -139,7 +166,11 @@ def refresh(request: Request, response: Response):
     if settings.COOKIE_SECURE:
         cookie_kwargs["secure"] = True
 
-    response.set_cookie("access_token", access_token, path='/', **cookie_kwargs)
+    # persist access_token longer for admin users on refresh as well
+    if role == "admin":
+        response.set_cookie("access_token", access_token, path='/', max_age=24*60*60, **cookie_kwargs)
+    else:
+        response.set_cookie("access_token", access_token, path='/', **cookie_kwargs)
     max_age = settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60
     response.set_cookie("refresh_token", new_refresh_token, path='/', max_age=max_age, **cookie_kwargs)
 

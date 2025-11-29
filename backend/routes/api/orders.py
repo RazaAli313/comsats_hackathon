@@ -53,9 +53,46 @@ def my_orders(user=Depends(get_current_user)):
     docs = db.orders.find({"user_id": ObjectId(user.get("id"))}).sort("created_at", -1)
     out = []
     for d in docs:
-        d["id"] = str(d["_id"])
-        d.pop("_id", None)
-        out.append(d)
+        # normalize nested values to JSON-safe types
+        uid = d.get("user_id")
+        try:
+            uid_str = str(uid) if uid is not None else None
+        except Exception:
+            uid_str = None
+
+        items = []
+        for it in d.get("items") or []:
+            pid = it.get("product_id") if isinstance(it, dict) or isinstance(it, dict) else it.get("product_id") if isinstance(it, dict) else it
+            try:
+                pid_str = str(pid) if pid is not None else None
+            except Exception:
+                pid_str = None
+            # handle when item is dict-like
+            if isinstance(it, dict):
+                qty = it.get("quantity")
+                price = it.get("price")
+                name = it.get("name")
+            else:
+                qty = None
+                price = None
+                name = None
+            items.append({"product_id": pid_str, "quantity": qty, "price": price, "name": name})
+
+        created = d.get("created_at")
+        try:
+            created_iso = created.isoformat() if hasattr(created, "isoformat") else str(created)
+        except Exception:
+            created_iso = str(created)
+
+        out.append({
+            "id": str(d.get("_id")),
+            "user_id": uid_str,
+            "items": items,
+            "total_amount": d.get("total_amount"),
+            "payment_status": d.get("payment_status"),
+            "created_at": created_iso,
+            "simulated": bool(d.get("simulated", False)),
+        })
     return {"orders": out}
 
 
@@ -65,7 +102,45 @@ def all_orders():
     docs = db.orders.find().sort("created_at", -1)
     out = []
     for d in docs:
-        d["id"] = str(d["_id"])
-        d.pop("_id", None)
-        out.append(d)
+        uid = d.get("user_id")
+        try:
+            uid_str = str(uid) if uid is not None else None
+        except Exception:
+            uid_str = None
+
+        items = []
+        for it in d.get("items") or []:
+            try:
+                pid = it.get("product_id")
+            except Exception:
+                pid = None
+            try:
+                pid_str = str(pid) if pid is not None else None
+            except Exception:
+                pid_str = None
+            if isinstance(it, dict):
+                qty = it.get("quantity")
+                price = it.get("price")
+                name = it.get("name")
+            else:
+                qty = None
+                price = None
+                name = None
+            items.append({"product_id": pid_str, "quantity": qty, "price": price, "name": name})
+
+        created = d.get("created_at")
+        try:
+            created_iso = created.isoformat() if hasattr(created, "isoformat") else str(created)
+        except Exception:
+            created_iso = str(created)
+
+        out.append({
+            "id": str(d.get("_id")),
+            "user_id": uid_str,
+            "items": items,
+            "total_amount": d.get("total_amount"),
+            "payment_status": d.get("payment_status"),
+            "created_at": created_iso,
+            "simulated": bool(d.get("simulated", False)),
+        })
     return {"orders": out}

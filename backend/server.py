@@ -12,10 +12,15 @@ from backend.core.logging import configure_logging, logger
 from backend.middleware.exception_handlers import http_exception_handler, validation_exception_handler, generic_exception_handler
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.exceptions import RequestValidationError
+from slowapi.middleware import SlowAPIMiddleware
+from backend.config.limiter import limiter
 
 configure_logging()
 
 app = FastAPI()
+# Attach limiter to app state and add middleware
+app.state.limiter = limiter
+app.add_middleware(SlowAPIMiddleware)
 app.add_exception_handler(Exception, generic_exception_handler)
 app.add_exception_handler(StarletteHTTPException, http_exception_handler)
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
@@ -37,6 +42,10 @@ from backend.routes.api.orders import router as orders_router
 app.include_router(orders_router, prefix="/api")
 from backend.routes.api.payments import router as payments_router
 app.include_router(payments_router, prefix="/api")
+from backend.routes.api.debug import router as debug_router
+app.include_router(debug_router, prefix="/api")
+from backend.routes.api.admin import router as admin_router
+app.include_router(admin_router, prefix="/api")
 
 
 @app.get("/")

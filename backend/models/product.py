@@ -16,12 +16,12 @@ class ProductCreate(ProductBase):
 
 
 class ProductUpdate(BaseModel):
-    name: Optional[constr(min_length=1)]
-    description: Optional[str]
-    price: Optional[int]
-    stock: Optional[int]
-    category: Optional[str]
-    images: Optional[List[str]]
+    name: Optional[constr(min_length=1)] = None
+    description: Optional[str] = None
+    price: Optional[int] = None
+    stock: Optional[int] = None
+    category: Optional[str] = None
+    images: Optional[List[str]] = None
 
 
 class ProductOut(ProductBase):

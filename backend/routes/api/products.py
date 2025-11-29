@@ -1,9 +1,10 @@
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends, Query, UploadFile, File
 from ...database.connection import get_db
 from ...models.product import ProductCreate, ProductUpdate, ProductOut
 from ...core.security import require_admin, get_current_user
 from bson import ObjectId
 from typing import Optional
+from ...utils.cloudinaryUploader import save_uploaded_image
 
 router = APIRouter()
 
@@ -20,8 +21,9 @@ def list_products(q: Optional[str] = Query(None), category: Optional[str] = Quer
     db = get_db()
     query = {}
     if q:
-        # text search over name and description
-        query["$text"] = {"$search": q}
+        # prefer $text search, but fall back to regex if text index missing
+        query_text = {"$search": q}
+        query["$text"] = query_text
     if category:
         query["category"] = category
     if min_price is not None or max_price is not None:
@@ -32,10 +34,33 @@ def list_products(q: Optional[str] = Query(None), category: Optional[str] = Quer
             price_query["$lte"] = max_price
         query["price"] = price_query
 
-    total = db.products.count_documents(query)
+    from pymongo.errors import OperationFailure
+    try:
+        total = db.products.count_documents(query)
+    except OperationFailure as e:
+        # fallback: if text index required for $text, use regex search on name/description
+        msg = str(e)
+        if "text index required" in msg or "IndexNotFound" in msg:
+            # remove $text and use regex search
+            qval = q
+            if qval:
+                regex_q = {"$or": [{"name": {"$regex": qval, "$options": "i"}}, {"description": {"$regex": qval, "$options": "i"}}]}
+                # merge with other filters
+                fallback_query = {k: v for k, v in query.items() if k != "$text"}
+                fallback_query.update(regex_q)
+                total = db.products.count_documents(fallback_query)
+                cursor = db.products.find(fallback_query)
+            else:
+                raise
+        else:
+            raise
     skip = max((page - 1) * limit, 0)
 
-    cursor = db.products.find(query)
+    # If cursor wasn't set by the fallback above, use the normal query
+    try:
+        cursor
+    except NameError:
+        cursor = db.products.find(query)
     if sort:
         # simple mapping: price_asc, price_desc, newest
         if sort == "price_asc":
@@ -55,6 +80,15 @@ def list_products(q: Optional[str] = Query(None), category: Optional[str] = Quer
     return {"items": items, "total": total, "page": page, "limit": limit}
 
 
+@router.get("/products/categories")
+def get_categories():
+    db = get_db()
+    cats = db.products.distinct("category")
+    # filter out falsy values and return unique list
+    cats = [c for c in cats if c]
+    return {"categories": cats}
+
+
 @router.get("/products/{product_id}")
 def get_product(product_id: str):
     db = get_db()
@@ -71,9 +105,18 @@ def get_product(product_id: str):
 def create_product(payload: ProductCreate):
     db = get_db()
     doc = payload.model_dump()
-    doc["created_at"] = None
+    # set created_at timestamp
+    from datetime import datetime
+    doc["created_at"] = datetime.utcnow()
+
     res = db.products.insert_one(doc)
-    return {"id": str(res.inserted_id), **doc}
+
+    # fetch the saved document and normalize ObjectId to strings for JSON
+    created = db.products.find_one({"_id": res.inserted_id})
+    if created:
+        created["id"] = str(created.get("_id"))
+        created.pop("_id", None)
+    return created
 
 
 @router.put("/products/{product_id}", dependencies=[Depends(require_admin)])
@@ -98,3 +141,10 @@ def delete_product(product_id: str):
     if res.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Product not found")
     return {"message": "deleted"}
+
+
+@router.post("/products/upload-image")
+async def upload_product_image(file: UploadFile = File(...)):
+    # Use cloudinary uploader util to save the image and return URL
+    url = await save_uploaded_image(file, image_type="product", cloudinary_type="upload")
+    return {"url": url}

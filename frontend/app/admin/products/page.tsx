@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import api from "../../../services/api";
+import toast from "react-hot-toast";
 import AdminProductForm from "../../../components/AdminProductForm";
 
 export default function AdminProductsPage() {
@@ -11,23 +12,39 @@ export default function AdminProductsPage() {
   useEffect(() => { api.getProducts().then((r:any) => setProducts(r.items || [])) }, []);
 
   async function handleCreate(payload: any) {
-    await api.createProduct(payload);
-    const res = await api.getProducts();
-    setProducts(res.items || []);
-    alert("Created");
+    try {
+      await api.createProduct(payload);
+      const res = await api.getProducts();
+      setProducts(res.items || []);
+      toast.success("Product created")
+    } catch (e: any) {
+      toast.error(e?.info?.detail || e.message || "Create failed")
+      throw e
+    }
   }
 
   async function handleUpdate(id: string, payload: any) {
-    await api.updateProduct(id, payload);
-    const res = await api.getProducts();
-    setProducts(res.items || []);
-    setEditing(null);
+    try {
+      await api.updateProduct(id, payload);
+      const res = await api.getProducts();
+      setProducts(res.items || []);
+      setEditing(null);
+      toast.success("Product updated")
+    } catch (e: any) {
+      toast.error(e?.info?.detail || e.message || "Update failed")
+      throw e
+    }
   }
 
   async function handleDelete(id: string) {
     if (!confirm("Delete product?")) return;
-    await api.deleteProduct(id);
-    setProducts(products.filter((p) => p.id !== id));
+    try {
+      await api.deleteProduct(id);
+      setProducts(products.filter((p) => p.id !== id));
+      toast.success("Product deleted")
+    } catch (e: any) {
+      toast.error(e?.info?.detail || e.message || "Delete failed")
+    }
   }
 
   return (

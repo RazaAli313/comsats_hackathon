@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import api from "../../services/api";
 import CartItem from "../../components/CartItem";
+import toast from "react-hot-toast";
 
 export default function CartPage() {
   const [cart, setCart] = useState<any>({ items: [] });
@@ -13,8 +14,14 @@ export default function CartPage() {
   }, []);
 
   async function handleRemove(productId: string) {
-    await api.removeFromCart(productId);
-    setCart((c: any) => ({ ...c, items: c.items.filter((it: any) => it.product_id !== productId) }));
+    try {
+      await api.removeFromCart(productId);
+      setCart((c: any) => ({ ...c, items: c.items.filter((it: any) => it.product_id !== productId) }));
+      toast.success('Item removed');
+    } catch (err: any) {
+      const msg = err?.info?.detail ? (typeof err.info.detail === 'string' ? err.info.detail : JSON.stringify(err.info.detail)) : (err?.message || 'Failed to remove item');
+      toast.error(msg);
+    }
   }
 
   async function handleCheckout() {
@@ -24,7 +31,8 @@ export default function CartPage() {
       alert("Order placed: " + res.order_id);
       setCart({ items: [] });
     } catch (err: any) {
-      alert(err?.info?.detail || err.message || "Checkout failed");
+      const msg = err?.info?.detail ? (typeof err.info.detail === 'string' ? err.info.detail : JSON.stringify(err.info.detail)) : (err?.message || 'Checkout failed');
+      alert(msg);
     }
   }
 

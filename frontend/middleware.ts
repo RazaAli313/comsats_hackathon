@@ -12,9 +12,22 @@ export async function middleware(req: NextRequest) {
   // call backend to verify session using cookies
   const apiBase = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000'
   try {
-    const res = await fetch(`${apiBase}/api/auth/me`, { credentials: 'include', headers: { accept: 'application/json' } })
+    // Forward the incoming cookies to the backend so the auth check can validate the session.
+    const cookieHeader = req.headers.get('cookie') || ''
+    const res = await fetch(`${apiBase}/api/auth/me`, { headers: { accept: 'application/json', cookie: cookieHeader } })
     if (res.ok) {
-      return NextResponse.next()
+      // If accessing admin routes, ensure the user has admin role
+      if (pathname.startsWith('/admin')) {
+        try {
+          const data = await res.json()
+          if (data && data.role === 'admin') return NextResponse.next()
+          // Not an admin — redirect to login (or could redirect to home/403)
+        } catch (e) {
+          // fall through to redirect
+        }
+      } else {
+        return NextResponse.next()
+      }
     }
   } catch (err) {
     // ignore and redirect

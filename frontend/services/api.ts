@@ -24,6 +24,14 @@ export async function login(email: string, password: string) {
   });
 }
 
+export async function register(username: string, email: string, password: string) {
+  return request(`/api/auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, email, password }),
+  });
+}
+
 export async function logout() {
   return request(`/api/auth/logout`, { method: "POST" });
 }
@@ -33,7 +41,16 @@ export async function me() {
 }
 
 export async function getProducts(params: Record<string, any> = {}) {
-  const qs = new URLSearchParams(params).toString();
+  // Build querystring while filtering out undefined/null values and the string 'undefined'
+  const safe: Record<string, string> = {};
+  Object.entries(params || {}).forEach(([k, v]) => {
+    if (v === undefined || v === null) return;
+    // convert boolean/number to string; ignore the literal string 'undefined'
+    const s = String(v);
+    if (s === "undefined") return;
+    safe[k] = s;
+  });
+  const qs = new URLSearchParams(safe).toString();
   return request(`/api/products${qs ? `?${qs}` : ""}`);
 }
 
@@ -47,6 +64,18 @@ export async function addToCart(productId: string, quantity: number, price: numb
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ product_id: productId, quantity, price }),
   });
+}
+
+export async function uploadImage(file: File) {
+  const form = new FormData();
+  form.append('file', file);
+  const res = await fetch(`${BASE}/api/products/upload-image`, { method: 'POST', body: form, credentials: 'include' });
+  if (!res.ok) throw new Error('Upload failed');
+  return res.json();
+}
+
+export async function getCategories() {
+  return request(`/api/products/categories`);
 }
 
 export async function getCart() {
@@ -110,4 +139,24 @@ export async function getAllOrders() {
   return request(`/api/orders/admin`);
 }
 
-export default { login, logout, me, getProducts, getProduct, addToCart, getCart, checkout, createCheckoutSession };
+export default {
+  login,
+  register,
+  logout,
+  me,
+  getProducts,
+  getProduct,
+  addToCart,
+  getCart,
+  checkout,
+  createCheckoutSession,
+  createProduct,
+  updateProduct,
+  deleteProduct,
+  updateCart,
+  removeFromCart,
+  getMyOrders,
+  getAllOrders,
+  uploadImage,
+  getCategories,
+};

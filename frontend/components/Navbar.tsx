@@ -9,12 +9,21 @@ export default function Navbar() {
 
   useEffect(() => {
     let mounted = true;
-    api
-      .me()
-      .then((r: any) => mounted && setUser(r))
-      .catch(() => mounted && setUser(null));
+    const load = () => {
+      api
+        .me()
+        .then((r: any) => mounted && setUser(r))
+        .catch(() => mounted && setUser(null));
+    };
+    load();
+
+    const onAuthChanged = () => {
+      load();
+    };
+    window.addEventListener("auth:changed", onAuthChanged);
     return () => {
       mounted = false;
+      window.removeEventListener("auth:changed", onAuthChanged);
     };
   }, []);
 
@@ -22,6 +31,7 @@ export default function Navbar() {
     try {
       await api.logout();
       setUser(null);
+      try { window.dispatchEvent(new CustomEvent('auth:changed')); } catch(e) {}
       window.location.href = "/";
     } catch (e) {
       console.error(e);
@@ -44,13 +54,18 @@ export default function Navbar() {
           <nav className="hidden md:flex items-center gap-4 text-sm">
             <a href="/" className="hover:underline">Home</a>
             <a href="/products" className="hover:underline">Products</a>
-            <a href="/about" className="hover:underline">About</a>
-            <a href="/contact" className="rounded-md px-3 py-1 text-sm bg-gradient-to-r from-purple-500 to-blue-600 text-white">Contact</a>
+            {/* <a href="/about" className="hover:underline">About</a>
+            <a href="/contact" className="rounded-md px-3 py-1 text-sm bg-gradient-to-r from-purple-500 to-blue-600 text-white">Contact</a> */}
           </nav>
         </div>
 
         <div className="flex items-center gap-4 text-sm">
-          <a href="/cart" className="text-sm hover:underline">Cart</a>
+          {!(user && user.role === "admin") && (
+            <a href="/cart" className="text-sm hover:underline">Cart</a>
+          )}
+          {user && (
+            <a href="/orders" className="text-sm hover:underline">Orders</a>
+          )}
           {user ? (
             <motion.div whileHover={{ scale: 1.02 }} className="flex items-center gap-3">
               <span className="muted">{user.username || user.email}</span>
@@ -59,7 +74,10 @@ export default function Navbar() {
               </button>
             </motion.div>
           ) : (
-            <a href="/login" className="hover:underline">Sign in</a>
+            <div className="flex items-center gap-3">
+              <a href="/signup" className="hover:underline">Create account</a>
+              <a href="/login" className="hover:underline">Sign in</a>
+            </div>
           )}
         </div>
       </div>

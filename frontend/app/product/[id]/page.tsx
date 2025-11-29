@@ -14,7 +14,7 @@ export default async function ProductDetail({ params }: { params: { id: string }
         <p className="muted mt-3">{data.description}</p>
         <div className="mt-6 flex items-center gap-6">
           <div className="text-2xl font-extrabold">₹{data.price}</div>
-          <AddToCartButton productId={data.id} price={data.price} />
+          <AddToCartButton productId={data.id} price={data.price} stock={data.stock} />
         </div>
       </div>
     </div>
