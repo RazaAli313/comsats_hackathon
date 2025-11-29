@@ -1,4 +1,7 @@
+"use client";
+
 import React, { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import api from "../../services/api";
 
 export default function CheckoutPage() {
@@ -9,11 +12,15 @@ export default function CheckoutPage() {
 
   async function handlePlaceOrder() {
     setLoading(true);
-    const items = cart.items.map((it:any) => ({ product_id: it.product_id, quantity: it.quantity, price: it.price }));
+    const items = cart.items.map((it:any) => ({ product_id: it.product_id, quantity: it.quantity, price: it.price, name: it.name }));
     try {
-      const res = await api.checkout(items);
-      alert("Order placed: " + res.order_id);
-      setCart({ items: [] });
+      const res = await api.createCheckoutSession(items, window.location.origin + "/checkout/success", window.location.origin + "/checkout/cancel");
+      // Redirect to Stripe Checkout
+      if (res && res.url) {
+        window.location.href = res.url;
+      } else {
+        alert("Failed to create checkout session");
+      }
     } catch (err:any) {
       alert(err?.info?.detail || err.message || "Checkout failed");
     } finally { setLoading(false) }
@@ -23,16 +30,16 @@ export default function CheckoutPage() {
 
   return (
     <div className="container mx-auto px-6 py-12 max-w-2xl">
-      <h1 className="text-2xl font-semibold">Checkout</h1>
+      <motion.h1 initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="text-2xl font-semibold">Checkout</motion.h1>
       <div className="mt-6 space-y-4">
         {cart.items.map((it:any)=> (
-          <div key={it.product_id} className="card flex items-center justify-between">
+          <motion.div key={it.product_id} initial={{ opacity: 0, x: 6 }} animate={{ opacity: 1, x: 0 }} className="card flex items-center justify-between">
             <div>
-              <div className="font-semibold">{it.product_id}</div>
+              <div className="font-semibold">{it.name || it.product_id}</div>
               <div className="muted text-sm">Qty: {it.quantity}</div>
             </div>
             <div className="font-medium">₹{it.price * it.quantity}</div>
-          </div>
+          </motion.div>
         ))}
       </div>
       <div className="mt-6 text-right">

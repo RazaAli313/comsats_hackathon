@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import Navbar from "../components/Navbar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -26,20 +27,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <div className="min-h-screen flex flex-col bg-[var(--color-background)] text-[var(--color-foreground)]">
-          <header className="border-b border-black/[.06] bg-gradient-to-b from-white to-transparent dark:from-black/80 py-4">
-            <div className="container mx-auto flex items-center justify-between px-6">
-              <a href="/" className="text-lg font-semibold tracking-tight">
-                ImagineX.ai
-              </a>
-              <nav className="flex items-center gap-4 text-sm">
-                <a href="/" className="hover:underline">Home</a>
-                <a href="/products" className="hover:underline">Products</a>
-                <a href="/about" className="hover:underline">About</a>
-                <a href="/contact" className="rounded-md bg-foreground/95 text-background px-4 py-2 text-sm hover:opacity-95">Contact</a>
-                <a href="/login" className="ml-2 text-sm hover:underline">Sign in</a>
-              </nav>
-            </div>
-          </header>
+          <Navbar />
 
           <main className="flex-1">
             {children}

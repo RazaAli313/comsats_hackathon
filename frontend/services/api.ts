@@ -61,6 +61,14 @@ export async function checkout(items: any[]) {
   });
 }
 
+export async function createCheckoutSession(items: any[], successUrl?: string, cancelUrl?: string) {
+  return request(`/api/payments/create-checkout-session`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ items, success_url: successUrl, cancel_url: cancelUrl }),
+  });
+}
+
 export async function updateCart(productId: string, quantity: number, price: number) {
   return request(`/api/cart/update`, {
     method: "PUT",
@@ -102,4 +110,4 @@ export async function getAllOrders() {
   return request(`/api/orders/admin`);
 }
 
-export default { login, logout, me, getProducts, getProduct, addToCart, getCart, checkout };
+export default { login, logout, me, getProducts, getProduct, addToCart, getCart, checkout, createCheckoutSession };
